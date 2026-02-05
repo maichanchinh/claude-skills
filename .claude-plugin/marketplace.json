@@ -1,0 +1,41 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "kotlin-android-skills",
+  "version": "1.0.0",
+  "description": "A curated collection of Kotlin and Android development skills for Jetpack Compose, coroutines, design patterns, and MVI architecture",
+  "owner": {
+    "name": "Chinh MC"
+  },
+  "plugins": [
+    {
+      "name": "compose-patterns",
+      "description": "Jetpack Compose UI patterns and best practices for Android development. Use when building Compose screens, creating reusable components, implementing Material Design 3 components, managing state in Compose, or writing component previews.",
+      "source": "./skills/compose-patterns",
+      "category": "development"
+    },
+    {
+      "name": "coroutines-patterns",
+      "description": "Kotlin Coroutines patterns for Android development with StateFlow, SharedFlow, suspend functions, and structured concurrency. Use when implementing async operations, managing streams of data, handling view model lifecycle, or implementing repository patterns with coroutines.",
+      "source": "./skills/coroutines-patterns",
+      "category": "development"
+    },
+    {
+      "name": "design-patterns",
+      "description": "SOLID principles and essential design patterns for Kotlin Android development. Use when designing class hierarchies, implementing dependency injection, structuring repositories, applying MVVM architecture, or understanding SOLID principles.",
+      "source": "./skills/design-patterns",
+      "category": "development"
+    },
+    {
+      "name": "kotlin-delegation",
+      "description": "Kotlin delegation patterns including property delegation, interface delegation, lazy initialization, and observable patterns. Use when implementing property delegates, creating reusable delegation logic, or applying lazy/observable patterns in Android/Kotlin code.",
+      "source": "./skills/kotlin-delegation",
+      "category": "development"
+    },
+    {
+      "name": "mvi-activity",
+      "description": "MVI (Model-View-Intent) pattern implementation for Android Activities with Jetpack Compose. Use when creating new Activity screens with MVI architecture, implementing screen state management with sealed classes, handling user actions/events, or structuring Compose-based Activities with ViewModel separation.",
+      "source": "./skills/mvi-activity",
+      "category": "development"
+    }
+  ]
+}
