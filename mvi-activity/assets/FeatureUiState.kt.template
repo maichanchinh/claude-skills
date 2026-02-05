@@ -1,0 +1,34 @@
+package {{packageName}}
+
+/**
+ * {{FeatureName}}UiState - Immutable UI state cho màn hình {{FeatureName}}
+ *
+ * Tất cả state của UI được định nghĩa trong data class này
+ * Sử dụng default values để dễ dàng tạo initial state
+ */
+data class {{FeatureName}}UiState(
+    // Loading state
+    val isLoading: Boolean = false,
+    
+    // Error state
+    val errorMessage: String? = null,
+    
+    // Data
+    val data: List<{{ItemType}}> = emptyList(),
+    
+    // Selection state
+    val selectedId: String = "",
+    
+    // UI visibility flags
+    val showDialog: Boolean = false
+)
+
+/**
+ * Data class cho items trong list
+ * TODO: Customize theo actual data model
+ */
+data class {{ItemType}}(
+    val id: String,
+    val name: String,
+    val description: String = ""
+)

@@ -1,0 +1,93 @@
+package {{packageName}}
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/**
+ * {{FeatureName}}ViewModel - ViewModel cho màn hình {{FeatureName}}
+ *
+ * Sử dụng StateFlow cho UI state và SharedFlow cho one-time events
+ * Business logic được xử lý trong ViewModel, không trong Screen
+ */
+@HiltViewModel
+class {{FeatureName}}ViewModel @Inject constructor(
+    private val repository: {{RepositoryType}}
+) : ViewModel() {
+
+    // UI State - observed by Compose Screen
+    private val _uiState = MutableStateFlow({{FeatureName}}UiState())
+    val uiState: StateFlow<{{FeatureName}}UiState> = _uiState.asStateFlow()
+
+    // Events - one-time events cho Activity xử lý (navigation, toast, etc.)
+    private val _events = MutableSharedFlow<{{FeatureName}}Event>()
+    val events = _events.asSharedFlow()
+
+    init {
+        loadData()
+    }
+
+    /**
+     * Xử lý user action từ Screen
+     * Single entry point cho tất cả user interactions
+     */
+    fun handleAction(action: {{FeatureName}}Action) {
+        when (action) {
+            is {{FeatureName}}Action.NavigateBack -> navigateBack()
+            is {{FeatureName}}Action.SelectItem -> selectItem(action.id)
+            is {{FeatureName}}Action.Refresh -> loadData()
+        }
+    }
+
+    /**
+     * Load data từ repository
+     */
+    private fun loadData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            
+            try {
+                val data = repository.getData()
+                _uiState.update { 
+                    it.copy(
+                        data = data,
+                        isLoading = false,
+                        errorMessage = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update { 
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "Unknown error"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Navigate back event
+     */
+    private fun navigateBack() {
+        viewModelScope.launch {
+            _events.emit({{FeatureName}}Event.Navigation.NavigateBack)
+        }
+    }
+
+    /**
+     * Select item và emit navigate event
+     */
+    private fun selectItem(id: String) {
+        viewModelScope.launch {
+            _events.emit({{FeatureName}}Event.NavigateToDetail(id))
+        }
+    }
+}

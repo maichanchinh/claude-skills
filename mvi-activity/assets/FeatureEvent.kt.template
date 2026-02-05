@@ -1,0 +1,45 @@
+package {{packageName}}
+
+/**
+ * {{FeatureName}}Event - Events từ ViewModel để Activity xử lý
+ *
+ * Events là one-time actions (navigation, toast, snackbar)
+ * Khác với StateFlow, events được emit và consume một lần
+ * Sử dụng SharedFlow trong ViewModel
+ */
+sealed class {{FeatureName}}Event {
+    
+    /**
+     * Navigation events - Activity xử lý navigation
+     */
+    sealed class Navigation : {{FeatureName}}Event() {
+        /**
+         * Navigate back - Đóng Activity
+         */
+        data object NavigateBack : Navigation()
+        
+        /**
+         * Navigate to detail - Mở detail screen
+         * @property id ID của item cần hiển thị
+         */
+        data class NavigateToDetail(val id: String) : Navigation()
+    }
+    
+    /**
+     * Message event - Hiển thị Toast/Snackbar
+     * @property message Message cần hiển thị
+     */
+    data class Message(val message: String) : {{FeatureName}}Event()
+    
+    /**
+     * Success event - Operation thành công
+     * @property data Data liên quan (optional)
+     */
+    data class Success(val data: String = "") : {{FeatureName}}Event()
+    
+    /**
+     * Error event - Operation thất bại
+     * @property error Error message
+     */
+    data class Error(val error: String) : {{FeatureName}}Event()
+}

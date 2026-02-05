@@ -1,0 +1,37 @@
+package {{packageName}}
+
+/**
+ * {{FeatureName}}Action - Sealed class cho tất cả user actions
+ *
+ * Screen không nhận ViewModel, chỉ nhận state và single onAction callback
+ * Mọi user interaction phải được đóng gói thành Action
+ */
+sealed class {{FeatureName}}Action {
+    
+    /**
+     * Navigate back - Quay lại màn hình trước
+     */
+    data object NavigateBack : {{FeatureName}}Action()
+    
+    /**
+     * Select item - Chọn item từ list
+     * @property id ID của item được chọn
+     */
+    data class SelectItem(val id: String) : {{FeatureName}}Action()
+    
+    /**
+     * Refresh - Refresh data
+     */
+    data object Refresh : {{FeatureName}}Action()
+    
+    /**
+     * Update text - Cập nhật text input
+     * @property text Giá trị text mới
+     */
+    data class UpdateText(val text: String) : {{FeatureName}}Action()
+    
+    /**
+     * Submit - Submit form/action
+     */
+    data object Submit : {{FeatureName}}Action()
+}

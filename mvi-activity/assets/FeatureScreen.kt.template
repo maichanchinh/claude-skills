@@ -1,0 +1,137 @@
+package {{packageName}}
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import {{applicationPackage}}.screen.theme.AppTheme
+import {{packageName}}.components.{{FeatureName}}TopBar
+
+/**
+ * {{FeatureName}}Screen - Màn hình {{FeatureName}} với 100% Compose
+ * 
+ * Screen không nhận ViewModel, chỉ nhận state và single onAction callback
+ * Sử dụng pattern MVI với single entry point cho tất cả user actions
+ */
+@Composable
+fun {{FeatureName}}Screen(
+    uiState: {{FeatureName}}UiState,
+    onAction: ({{FeatureName}}Action) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            {{FeatureName}}TopBar(
+                onBackClick = { onAction({{FeatureName}}Action.NavigateBack) }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Content container
+            Box(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
+                    uiState.errorMessage != null -> {
+                        Text(
+                            text = uiState.errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(16.dp)
+                        )
+                    }
+                    else -> {
+                        {{FeatureName}}Content(
+                            data = uiState.data,
+                            onItemClick = { id ->
+                                onAction({{FeatureName}}Action.SelectItem(id))
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Content component khi có data
+ */
+@Composable
+private fun {{FeatureName}}Content(
+    data: List<{{ItemType}}>,
+    onItemClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // TODO: Implement content UI
+}
+
+// ==================== Previews ====================
+
+@Preview(
+    name = "{{FeatureName}}Screen - Loading",
+    showBackground = true
+)
+@Composable
+fun {{FeatureName}}ScreenLoadingPreview() {
+    AppTheme {
+        {{FeatureName}}Screen(
+            uiState = {{FeatureName}}UiState(isLoading = true),
+            onAction = {}
+        )
+    }
+}
+
+@Preview(
+    name = "{{FeatureName}}Screen - Error",
+    showBackground = true
+)
+@Composable
+fun {{FeatureName}}ScreenErrorPreview() {
+    AppTheme {
+        {{FeatureName}}Screen(
+            uiState = {{FeatureName}}UiState(errorMessage = "Failed to load data"),
+            onAction = {}
+        )
+    }
+}
+
+@Preview(
+    name = "{{FeatureName}}Screen - Content",
+    showBackground = true
+)
+@Composable
+fun {{FeatureName}}ScreenContentPreview() {
+    AppTheme {
+        {{FeatureName}}Screen(
+            uiState = {{FeatureName}}UiState(
+                data = listOf(
+                    // TODO: Add sample items
+                )
+            ),
+            onAction = {}
+        )
+    }
+}
