@@ -1,0 +1,5 @@
+# Cache directory for synced skills
+.cache/
+
+# macOS
+.DS_Store
