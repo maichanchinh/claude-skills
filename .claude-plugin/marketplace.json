@@ -1,5 +1,4 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "kotlin-android-skills",
   "version": "1.0.0",
   "description": "A curated collection of Kotlin and Android development skills for Jetpack Compose, coroutines, design patterns, and MVI architecture",
@@ -35,6 +34,12 @@
       "name": "mvi-activity",
       "description": "MVI (Model-View-Intent) pattern implementation for Android Activities with Jetpack Compose. Use when creating new Activity screens with MVI architecture, implementing screen state management with sealed classes, handling user actions/events, or structuring Compose-based Activities with ViewModel separation.",
       "source": "./skills/mvi-activity",
+      "category": "development"
+    },
+    {
+      "name": "traceless-analytics-sdk",
+      "description": "Traceless Analytics SDK for Android - Firebase-first analytics SDK for tracking screen views and UI interactions. Use when implementing, modifying, or extending Android analytics tracking with this SDK: (1) Screen view tracking with Analytics.enterScreen(), (2) UI interaction tracking with Analytics.trackUI(), (3) Jetpack Compose integration, (4) Debugging analytics issues, (5) Writing tests for analytics functionality.",
+      "source": "./skills/traceless-analytics-sdk",
       "category": "development"
     }
   ]
