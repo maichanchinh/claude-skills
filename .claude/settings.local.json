@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add admob-integration skill to marketplace\n\nAdd AdMob integration skill for implementing banner ads, interstitial ads, rewarded ads, and native ads in Android applications with Jetpack Compose.\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}
