@@ -41,6 +41,12 @@
       "description": "Traceless Analytics SDK for Android - Firebase-first analytics SDK for tracking screen views and UI interactions.",
       "source": "./skills/traceless-analytics-sdk",
       "category": "development"
+    },
+    {
+      "name": "admob-integration",
+      "description": "AdMob integration patterns for Android with Jetpack Compose. Use when implementing banner ads, interstitial ads, rewarded ads, or native ads in Android applications.",
+      "source": "./skills/admob-integration",
+      "category": "development"
     }
   ]
 }
