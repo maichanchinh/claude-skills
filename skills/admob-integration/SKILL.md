@@ -1,6 +1,6 @@
 ---
 name: admob-integration
-description: Complete guide for integrating AdSpaceSDK (io.github.maichanchinh:adspace-admob) into Android projects. Use when implementing AdMob ads with AdSpaceSDK, including setup (dependencies, initialization, manifest configuration), integrating ad types (Banner, Native, Interstitial, Rewarded, Rewarded Interstitial, Open App), and advanced features (Firebase Remote Config, CMP consent management, app resume ads). Covers both View API (XML/Kotlin) and Jetpack Compose implementations.
+description: AdSpaceSDK (AdMob Next-Gen wrapper) integration for Android. Covers all ad types (Banner, Native, Interstitial, Rewarded, Rewarded Interstitial, Open App), CMP consent (UMP/GDPR), Firebase Remote Config, resume ads. Both View API (XML/Kotlin) and Jetpack Compose. Min SDK 26, Java 21.
 ---
 
 # AdSpaceSDK Integration
@@ -11,7 +11,7 @@ Complete integration guide for AdSpaceSDK - an Ad Orchestration Layer wrapping G
 
 **CRITICAL**: Always use the correct package name to avoid confusion:
 
-- **Maven Dependency**: `io.github.maichanchinh:adspace-admob:2.0.0`
+- **Maven Dependency**: `io.github.maichanchinh:adspace-admob:2.0.+`
 - **Package Name**: `com.admob.adspace`
 - **Min SDK**: Android 26 (API 26+)
 - **Java/Kotlin**: Java 21, JVM target 21
@@ -70,7 +70,7 @@ Add to app module's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("io.github.maichanchinh:adspace-admob:2.0.0")
+    implementation("io.github.maichanchinh:adspace-admob:2.0.+")
 }
 ```
 
@@ -185,10 +185,10 @@ For detailed implementation of each ad type, see:
 
 For advanced features, see:
 
-- **Firebase Remote Config**: See [references/remote-config.md](references/remote-config.md)
-- **CMP Consent Management**: See [references/cmp.md](references/cmp.md)
-- **App Resume Ads**: See [references/resume-ads.md](references/resume-ads.md)
-- **Event Handling**: See [references/events.md](references/events.md)
+- **CMP Consent Management**: See [references/cmp.md](references/cmp.md) - GDPR/UMP consent flow, loading dialog, privacy options
+- **Firebase Remote Config**: See [references/remote-config.md](references/remote-config.md) - Remote configuration override
+- **App Resume Ads**: See [references/resume-ads.md](references/resume-ads.md) - Open app ads on resume
+- **Event Handling**: See [references/events.md](references/events.md) - Global event bus subscription
 
 ## Critical Rules
 
@@ -202,45 +202,19 @@ For advanced features, see:
 
 ## Common Patterns
 
-### Check if Ad is Ready
-
 ```kotlin
-if (SpaceInterstitial.isLoaded("ADMOB_Interstitial_General")) {
-    // Ad is ready to show
-}
-```
+// Check if ad is ready
+SpaceInterstitial.isLoaded("ADMOB_Interstitial_General")
 
-### Preload Ads
+// Preload ads
+SpaceInterstitial.preload("ADMOB_Interstitial_General", callback)
+SpaceRewarded.preload("ADMOB_Rewarded_Video", callback)
 
-```kotlin
-// Preload interstitial
-SpaceInterstitial.preload(
-    space = "ADMOB_Interstitial_General",
-    callback = callback
-)
-
-// Preload rewarded
-SpaceRewarded.preload(
-    space = "ADMOB_Rewarded_Video",
-    callback = callback
-)
-```
-
-### Clear Cache
-
-```kotlin
-// Clear specific space
+// Clear cache
 SpaceBanner.clearCache("ADMOB_Banner_Home")
-
-// Clear all banner cache
 SpaceBanner.clearAllCache()
-```
 
-### Disable Ad Type Globally
-
-```kotlin
-import com.admob.adspace.config.AdsType
-
+// Disable ad type globally
 AdSpaceSDK.setAdTypeEnabled(AdsType.BANNER, false)
 ```
 

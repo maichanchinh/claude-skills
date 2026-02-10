@@ -20,10 +20,6 @@ Add Firebase dependencies to app module's `build.gradle.kts`:
 ```kotlin
 dependencies {
     implementation("io.github.maichanchinh:adspace-admob:2.0.0")
-
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-config-ktx")
 }
 ```
 
