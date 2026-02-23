@@ -134,12 +134,21 @@ Remote Config > Local Config > SDK Defaults
 
 ## Best Practices
 
-1. **Set reasonable fetch interval** - 1 hour (3600s) recommended
-2. **Test in debug mode** - Use shorter fetch interval for testing
-3. **Use global kill switch** - For emergency ad disabling
-4. **Monitor metrics** - Track impact of remote config changes
-5. **Gradual rollout** - Use Firebase A/B testing for changes
-6. **Keep local config complete** - Remote config is optional override
+1. **Do not override adsType from remote config** - `adsType` is immutable and must be defined in local config only. Attempting to change it remotely will have no effect and may cause unexpected behavior. Always set `adsType` at build time in `assets/ads_config.json`.
+
+2. **Test remote config changes before production** - Always validate config changes in a staging or debug environment first. Use `minimumFetchIntervalInSeconds = 0` in debug builds and verify ad behavior is correct before rolling out to production users.
+
+3. **Use Firebase rollouts for gradual rollout** - Never push config changes to 100% of users at once. Use Firebase Remote Config's percentage rollout or A/B testing feature to gradually expose changes and monitor metrics before full deployment.
+
+4. **Set reasonable min_interval to avoid ad spam** - Do not set `min_interval` too low. A value below 15000ms (15 seconds) for interstitials risks negative user experience and potential policy violations. Recommended minimums: interstitial >= 30000ms, rewarded >= 15000ms.
+
+5. **Monitor remote config fetch errors** - Track fetch failures in your analytics or crash reporting tool. If remote config cannot be fetched, the SDK falls back to local config, so always ensure local config is complete and valid as a fallback.
+
+6. **Always maintain a complete local fallback config** - Remote config is an optional override layer. The local `assets/ads_config.json` must always be a fully functional standalone config. Never depend solely on remote config for critical ad settings such as `admob_id` or `enable` flags.
+
+7. **Set reasonable fetch interval** - 1 hour (3600s) recommended for production. Use shorter intervals in debug builds only.
+
+8. **Use global kill switch for emergencies** - The `ads.global.enable = false` parameter disables all ads instantly without an app update, making it the fastest response mechanism for ad-related issues in production.
 
 ## Testing Remote Config
 

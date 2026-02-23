@@ -41,7 +41,7 @@ class MyApplication : Application() {
         AdSpaceSDK.initialize(this, config)
 
         // Register global event listener
-        AdSpaceSDK.setGlobalAdCallback(object : AdEventListener {
+        AdSpaceSDK.setAdCallback(object : AdEventListener {
             override fun onAdEvent(event: AdEvent) {
                 when (event) {
                     is AdEvent.Loaded -> {
@@ -118,7 +118,7 @@ eventBus.subscribe("ADMOB_Interstitial_General", object : AdEventListener {
 class AnalyticsManager {
 
     fun setupAdEventTracking() {
-        AdSpaceSDK.setGlobalAdCallback(object : AdEventListener {
+        AdSpaceSDK.setAdCallback(object : AdEventListener {
             override fun onAdEvent(event: AdEvent) {
                 when (event) {
                     is AdEvent.Impression -> {
@@ -160,7 +160,7 @@ class RevenueTracker {
     private var totalRevenue = 0.0
 
     init {
-        AdSpaceSDK.setGlobalAdCallback(object : AdEventListener {
+        AdSpaceSDK.setAdCallback(object : AdEventListener {
             override fun onAdEvent(event: AdEvent) {
                 if (event is AdEvent.Paid) {
                     totalRevenue += event.revenue.value
@@ -187,7 +187,7 @@ class RevenueTracker {
 class AdErrorMonitor {
 
     init {
-        AdSpaceSDK.setGlobalAdCallback(object : AdEventListener {
+        AdSpaceSDK.setAdCallback(object : AdEventListener {
             override fun onAdEvent(event: AdEvent) {
                 if (event is AdEvent.Failed) {
                     // Log to crash reporting
@@ -210,7 +210,7 @@ class AdErrorMonitor {
 
 ```kotlin
 // Remove global listener
-AdSpaceSDK.setGlobalAdCallback(null)
+AdSpaceSDK.setAdCallback(null)
 
 // Unsubscribe from specific space
 val eventBus = AdSpaceSDK.getEventBus()
@@ -219,11 +219,28 @@ eventBus.unsubscribe("ADMOB_Interstitial_General", listener)
 
 ## Best Practices
 
-1. **Use global listener for analytics** - Track all ad events centrally
-2. **Per-space listeners for specific logic** - Use when needed for specific spaces
-3. **Don't block event handlers** - Keep handlers fast and non-blocking
-4. **Unsubscribe when done** - Prevent memory leaks
-5. **Log revenue events** - Track ad revenue for optimization
+1. **Register global listener in Application class, not Activity** - The global listener should be set in `Application.onCreate()` so it persists for the entire app lifecycle and never misses events due to Activity recreation or lifecycle transitions.
+
+2. **Always clear listener with `setAdCallback(null)` when no longer needed** - If a listener is registered in a component with a shorter lifecycle than the Application (e.g., a singleton manager that can be torn down), call `AdSpaceSDK.setAdCallback(null)` to prevent memory leaks and stale references.
+
+3. **Do not block event handlers with heavy operations** - Event handlers are called on the SDK's internal dispatcher thread. Keep handlers fast and non-blocking. Never perform disk I/O, network calls, or long computations directly inside `onAdEvent`.
+
+4. **Use Coroutines or background threads for heavy processing in event handlers** - If an event requires heavy processing (e.g., writing to a database, calling a backend API), dispatch that work to a background coroutine scope or executor immediately and return from the handler.
+
+   ```kotlin
+   override fun onAdEvent(event: AdEvent) {
+       if (event is AdEvent.Paid) {
+           // Do NOT call api.trackRevenue() directly here
+           applicationScope.launch(Dispatchers.IO) {
+               api.trackRevenue(event.space, event.revenue.value)
+           }
+       }
+   }
+   ```
+
+5. **Log events centrally for analytics** - Use the global listener as the single source of truth for all ad analytics logging. Avoid scattering ad event tracking across multiple Activities or Fragments, which leads to duplicate or missed events.
+
+6. **Use per-space listeners only when space-specific handling is required** - Per-space listeners via `eventBus.subscribe(spaceName, listener)` are intended for cases where a specific UI component needs to react to one ad space (e.g., refreshing a banner container). Do not use per-space listeners as a replacement for centralized analytics tracking.
 
 ## Common Issues
 

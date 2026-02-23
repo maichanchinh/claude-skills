@@ -275,6 +275,202 @@ class MyApplication : Application() {
 
 ---
 
+## Jetpack Compose Integration
+
+AdSpaceSDK supports Jetpack Compose for showing interstitial ads.
+
+### Basic Implementation
+
+```kotlin
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.admob.adspace.interstitial.SpaceInterstitial
+import com.admob.adspace.interstitial.InterstitialCallback
+import com.admob.adspace.interstitial.InterstitialError
+
+@Composable
+fun InterstitialAdScreen(
+    spaceName: String = "ADMOB_Interstitial_General"
+) {
+    val context = LocalContext.current
+    var adLoaded by remember { mutableStateOf(false) }
+    var lastShowTime by remember { mutableStateOf(0L) }
+
+    // Lifecycle observer for cleanup
+    val lifecycleOwner = LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                SpaceInterstitial.clearCache(spaceName)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Load ad on first composition
+    LaunchedEffect(Unit) {
+        SpaceInterstitial.load(
+            space = spaceName,
+            callback = object : InterstitialCallback {
+                override fun onLoaded(space: String) {
+                    adLoaded = true
+                }
+
+                override fun onFailed(space: String, error: InterstitialError) {
+                    adLoaded = false
+                }
+            }
+        )
+    }
+
+    // Show ad button
+    Button(
+        onClick = {
+            if (adLoaded && System.currentTimeMillis() - lastShowTime > 30000) {
+                SpaceInterstitial.show(
+                    activity = context as Activity,
+                    space = spaceName,
+                    callback = object : InterstitialCallback {
+                        override fun onShowed(space: String) {
+                            lastShowTime = System.currentTimeMillis()
+                            adLoaded = false
+                        }
+
+                        override fun onDismissed(space: String) {
+                            // Preload next ad
+                            SpaceInterstitial.preload(spaceName, null)
+                        }
+                    }
+                )
+            }
+        },
+        enabled = adLoaded
+    ) {
+        Text("Show Ad")
+    }
+}
+```
+
+### Advanced Compose Pattern with ViewModel
+
+```kotlin
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.admob.adspace.interstitial.SpaceInterstitial
+import com.admob.adspace.interstitial.InterstitialCallback
+import com.admob.adspace.interstitial.InterstitialError
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class InterstitialAdViewModel(
+    private val spaceName: String = "ADMOB_Interstitial_General"
+) : ViewModel() {
+
+    private val _adState = MutableStateFlow<AdState>(AdState.Idle)
+    val adState: StateFlow<AdState> = _adState.asStateFlow()
+
+    sealed class AdState {
+        object Idle : AdState()
+        object Loading : AdState()
+        object Loaded : AdState()
+        data class Error(val message: String) : AdState()
+    }
+
+    init {
+        preloadAd()
+    }
+
+    fun preloadAd() {
+        viewModelScope.launch {
+            _adState.value = AdState.Loading
+            SpaceInterstitial.load(
+                space = spaceName,
+                callback = object : InterstitialCallback {
+                    override fun onLoaded(space: String) {
+                        _adState.value = AdState.Loaded
+                    }
+
+                    override fun onFailed(space: String, error: InterstitialError) {
+                        _adState.value = AdState.Error(error.message)
+                    }
+                }
+            )
+        }
+    }
+
+    fun showAd(activity: Activity, onComplete: () -> Unit) {
+        SpaceInterstitial.show(
+            space = spaceName,
+            activity = activity,
+            callback = object : InterstitialCallback {
+                override fun onShowed(space: String) {
+                    _adState.value = AdState.Idle
+                }
+
+                override fun onDismissed(space: String) {
+                    onComplete()
+                    preloadAd()
+                }
+
+                override fun onFailed(space: String, error: InterstitialError) {
+                    onComplete()
+                    preloadAd()
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun InterstitialAdScreenWithViewModel(
+    viewModel: InterstitialAdViewModel = viewModel()
+) {
+    val context = LocalContext.current
+    val adState by viewModel.adState.collectAsState()
+
+    Button(
+        onClick = {
+            viewModel.showAd(context as Activity) {
+                // Handle ad completion
+            }
+        },
+        enabled = adState is AdState.Loaded
+    ) {
+        when (adState) {
+            is AdState.Loading -> Text("Loading...")
+            is AdState.Loaded -> Text("Show Ad")
+            else -> Text("Load Ad")
+        }
+    }
+}
+```
+
+### Best Practices for Compose
+
+1. **Use DisposableEffect for cleanup** - Clear ad cache in ON_DESTROY
+2. **LaunchedEffect for one-time operations** - Load ads on first composition
+3. **State management** - Track ad load status with remember/mutableStateOf
+4. **Lifecycle awareness** - Respect Compose lifecycle
+5. **Context handling** - Use LocalContext.current appropriately
+6. **ViewModel integration** - Use ViewModel for complex ad state management
+7. **Reactive updates** - Use StateFlow/Flow for ad state changes
+8. **Memory management** - Clear resources in DisposableEffect onDispose
+
+---
+
 ## SpaceInterstitialSplash
 
 Interstitial ads for splash screen with timeout support. Automatically loads, shows ad, and calls nextAction when ad is dismissed or timeout reached.

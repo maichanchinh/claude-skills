@@ -70,6 +70,151 @@ When `cmp_auto=true`:
 6. **AdMob initializes** - SDK initializes AdMob after consent gathered
 7. **Callback fires** - `onConsentGathered` callback invoked
 
+## Consent Flow Completed Callback
+
+Receive notifications when the CMP consent flow completes (both auto and manual modes).
+
+### Overview
+
+The consent flow completed callback allows you to react when the consent flow finishes, whether triggered automatically by the SDK or manually via `requestConsent()`. This is useful for:
+
+- Triggering post-consent initialization logic
+- Logging consent results for analytics
+- Updating UI based on consent status
+- Starting ad loading after consent obtained
+
+### Setting the Callback
+
+```kotlin
+import com.admob.adspace.AdSpaceSDK
+
+class MainActivity : AppCompatActivity() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Set consent flow completed callback
+        AdSpaceSDK.setConsentFlowCompletedCallback { canRequestAds ->
+            if (canRequestAds) {
+                // User consent obtained - ads can be requested
+                Timber.d("Consent obtained - ads ready")
+                initializeAdSpaces()
+            } else {
+                // Consent not obtained - ads cannot be requested
+                Timber.d("Consent not obtained - ads blocked")
+                handleConsentDenied()
+            }
+        }
+    }
+
+    private fun initializeAdSpaces() {
+        // Start loading ads
+        SpaceBanner.preload("ADMOB_Banner_Home")
+        SpaceInterstitial.preload("ADMOB_Interstitial_General")
+    }
+
+    private fun handleConsentDenied() {
+        // Show non-ad version or alternative monetization
+        showPremiumUpgradeDialog()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // IMPORTANT: Always clear callback to prevent memory leaks
+        AdSpaceSDK.setConsentFlowCompletedCallback(null)
+    }
+}
+```
+
+### Callback Behavior
+
+**When it fires**:
+- After auto CMP flow completes (when `cmp_auto=true`)
+- After manual `requestConsent()` call completes
+- Only once per consent flow session
+
+**Boolean parameter**:
+- `true` - Consent obtained, ads can be requested (`canRequestAds() == true`)
+- `false` - Consent not obtained, ads cannot be requested
+
+**Thread safety**: Callback is invoked on the main thread.
+
+### Memory Management
+
+**CRITICAL**: Always clear the callback in `onDestroy()` to prevent memory leaks:
+
+```kotlin
+override fun onDestroy() {
+    super.onDestroy()
+    // ALWAYS clear callback to avoid memory leak
+    AdSpaceSDK.setConsentFlowCompletedCallback(null)
+}
+```
+
+### Self-Clearing Pattern
+
+For one-time callbacks, use the self-clearing pattern:
+
+```kotlin
+AdSpaceSDK.setConsentFlowCompletedCallback { canRequestAds ->
+    // Handle callback
+    onConsentFlowCompleted(canRequestAds)
+
+    // Immediately clear callback after invocation
+    AdSpaceSDK.setConsentFlowCompletedCallback(null)
+}
+```
+
+This pattern is useful when you only need to handle the callback once and don't want to track lifecycle manually.
+
+### Best Practices
+
+1. **Always clear in onDestroy** - Prevent memory leaks by clearing callback in Activity/Fragment `onDestroy()`
+2. **Check Boolean parameter** - The parameter tells you if ads can be requested, not just that flow completed
+3. **Thread-safe** - Callback fires on main thread, safe to update UI directly
+4. **Use for analytics** - Log consent results to track user consent rates
+5. **Combine with canShowAds()** - For comprehensive ad readiness check
+
+### Example: Application-Level Callback
+
+Set callback in Application class for app-wide consent handling:
+
+```kotlin
+class MyApplication : Application() {
+
+    override fun onCreate() {
+        super.onCreate()
+
+        val config = AdSpaceSDKConfig(
+            debug = BuildConfig.DEBUG,
+            testDevices = listOf("33BE2250B4358CC8426CA1F9B3"),
+            minInterval = 30L,
+            appId = getString(R.string.admob_app_id)
+        )
+
+        AdSpaceSDK.initialize(this, config)
+
+        // Set app-wide consent callback
+        AdSpaceSDK.setConsentFlowCompletedCallback { canRequestAds ->
+            if (canRequestAds) {
+                // Notify analytics
+                analytics.logEvent("consent_obtained")
+                // Start ad preloading
+                preloadCriticalAds()
+            } else {
+                analytics.logEvent("consent_denied")
+            }
+        }
+    }
+
+    private fun preloadCriticalAds() {
+        // Preload high-priority ad spaces
+        SpaceInterstitial.preload("ADMOB_Interstitial_Main")
+    }
+}
+```
+
 ## Manual CMP Management
 
 ### Check Consent Status

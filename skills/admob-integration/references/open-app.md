@@ -476,3 +476,429 @@ class SplashActivity : AppCompatActivity() {
 | **User Experience** | Less intrusive, more natural | More intrusive |
 | **Revenue** | Typically higher (campaign ads) | Standard interstitial revenue |
 | **Use Case** | General app resuming | When you want more control |
+
+---
+
+## Jetpack Compose Integration
+
+AdSpaceSDK supports Jetpack Compose for showing open app ads.
+
+### SpaceOpenSplash in Compose
+
+```kotlin
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.admob.adspace.open.SpaceOpenSplash
+import com.admob.adspace.open.OpenCallback
+import com.admob.adspace.open.OpenError
+
+@Composable
+fun OpenAppSplashScreen(
+    spaceName: String = "ADMOB_Open_Splash",
+    timeoutMs: Long = 15_000L,
+    onSplashComplete: () -> Unit
+) {
+    val context = LocalContext.current
+    var splashCompleted by remember { mutableStateOf(false) }
+
+    // Lifecycle observer for cleanup
+    val lifecycleOwner = LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                SpaceOpenSplash.cancel()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Show splash ad
+    LaunchedEffect(Unit) {
+        SpaceOpenSplash.show(
+            space = spaceName,
+            activity = context as Activity,
+            timeoutMs = timeoutMs,
+            callback = object : OpenCallback {
+                override fun onLoaded(space: String) {
+                    // Splash ad loaded
+                }
+
+                override fun onFailed(space: String, error: OpenError) {
+                    // Will still call nextAction
+                }
+
+                override fun onImpression(space: String) {}
+
+                override fun onClicked(space: String) {}
+
+                override fun onPaid(space: String, revenue: AdRevenue) {}
+
+                override fun onDismissed(space: String) {
+                    splashCompleted = true
+                }
+
+                override fun onAdLeftApplication(space: String) {}
+            },
+            nextAction = {
+                splashCompleted = true
+                onSplashComplete()
+            }
+        )
+    }
+
+    // Show loading UI while waiting
+    if (!splashCompleted) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Loading...")
+            }
+        }
+    }
+}
+```
+
+### SpaceOpenSplash with Custom Loading UI
+
+```kotlin
+@Composable
+fun CustomOpenAppSplashScreen(
+    spaceName: String = "ADMOB_Open_Splash",
+    timeoutMs: Long = 10_000L,
+    onSplashComplete: () -> Unit
+) {
+    val context = LocalContext.current
+    var splashCompleted by remember { mutableStateOf(false) }
+    var elapsedTime by remember { mutableStateOf(0L) }
+
+    // Track elapsed time for progress
+    LaunchedEffect(Unit) {
+        val startTime = System.currentTimeMillis()
+        while (!splashCompleted && elapsedTime < timeoutMs) {
+            kotlinx.coroutines.delay(100)
+            elapsedTime = System.currentTimeMillis() - startTime
+        }
+    }
+
+    // Show splash ad
+    LaunchedEffect(Unit) {
+        SpaceOpenSplash.show(
+            space = spaceName,
+            activity = context as Activity,
+            timeoutMs = timeoutMs,
+            callback = null,
+            nextAction = {
+                splashCompleted = true
+                onSplashComplete()
+            }
+        )
+    }
+
+    // Custom splash UI with progress
+    if (!splashCompleted) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // App logo
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.size(120.dp),
+                    tint = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // App name
+                Text(
+                    text = "My App",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(48.dp))
+
+                // Progress indicator
+                LinearProgressIndicator(
+                    progress = { elapsedTime.toFloat() / timeoutMs.toFloat() },
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(4.dp),
+                    color = Color.White,
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Loading ${(elapsedTime / 1000).toInt()}s",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
+```
+
+### SpaceOpenResume Integration in Compose
+
+```kotlin
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.admob.adspace.open.SpaceOpenResume
+
+@Composable
+fun OpenAppResumeHandler(
+    spaceName: String = "ADMOB_Open_Resume",
+    enabled: Boolean = true
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Register/unregister based on enabled state
+    SideEffect {
+        if (enabled) {
+            SpaceOpenResume.registerAndLoad(
+                space = spaceName,
+                callback = object : OpenCallback {
+                    override fun onLoaded(space: String) {}
+
+                    override fun onFailed(space: String, error: OpenError) {}
+
+                    override fun onImpression(space: String) {}
+
+                    override fun onClicked(space: String) {}
+
+                    override fun onPaid(space: String, revenue: AdRevenue) {}
+
+                    override fun onDismissed(space: String) {}
+
+                    override fun onAdLeftApplication(space: String) {}
+                }
+            )
+        } else {
+            SpaceOpenResume.unregister()
+        }
+    }
+
+    // Cleanup on dispose
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                SpaceOpenResume.clearCache(spaceName)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            if (enabled) {
+                SpaceOpenResume.unregister()
+            }
+        }
+    }
+}
+
+// Usage in MainActivity
+@Composable
+fun MainScreen() {
+    val context = LocalContext.current
+
+    // Enable open app resume ads
+    OpenAppResumeHandler(
+        spaceName = "ADMOB_Open_Resume",
+        enabled = true
+    )
+
+    // Your app content
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("Welcome to My App")
+    }
+}
+```
+
+### OpenAppResumeManager for Compose
+
+```kotlin
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.admob.adspace.open.SpaceOpenResume
+import com.admob.adspace.open.OpenCallback
+import com.admob.adspace.open.OpenError
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+class OpenAppResumeManager(
+    private val spaceName: String = "ADMOB_Open_Resume"
+) : ViewModel() {
+
+    private val _isRegistered = MutableStateFlow(false)
+    val isRegistered: StateFlow<Boolean> = _isRegistered.asStateFlow()
+
+    private val _isLoaded = MutableStateFlow(false)
+    val isLoaded: StateFlow<Boolean> = _isLoaded.asStateFlow()
+
+    fun register() {
+        viewModelScope.launch {
+            SpaceOpenResume.registerAndLoad(
+                space = spaceName,
+                callback = object : OpenCallback {
+                    override fun onLoaded(space: String) {
+                        _isLoaded.value = true
+                    }
+
+                    override fun onFailed(space: String, error: OpenError) {
+                        _isLoaded.value = false
+                    }
+
+                    override fun onImpression(space: String) {}
+
+                    override fun onClicked(space: String) {}
+
+                    override fun onPaid(space: String, revenue: AdRevenue) {}
+
+                    override fun onDismissed(space: String) {}
+
+                    override fun onAdLeftApplication(space: String) {}
+                }
+            )
+            _isRegistered.value = true
+        }
+    }
+
+    fun unregister() {
+        SpaceOpenResume.unregister()
+        _isRegistered.value = false
+        _isLoaded.value = false
+    }
+
+    fun clearCache() {
+        SpaceOpenResume.clearCache(spaceName)
+        _isLoaded.value = false
+    }
+
+    fun skipNextShow() {
+        SpaceOpenResume.skipNextShow()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        unregister()
+    }
+}
+
+@Composable
+fun OpenAppResumeSettings(
+    manager: OpenAppResumeManager = viewModel()
+) {
+    val isRegistered by manager.isRegistered.collectAsState()
+    val isLoaded by manager.isLoaded.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Open App Resume Ads",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Enable Resume Ads")
+            Switch(
+                checked = isRegistered,
+                onCheckedChange = { enabled ->
+                    if (enabled) {
+                        manager.register()
+                    } else {
+                        manager.unregister()
+                    }
+                }
+            )
+        }
+
+        if (isRegistered) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Ad Status")
+                Text(
+                    text = if (isLoaded) "Ready" else "Loading...",
+                    color = if (isLoaded) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { manager.skipNextShow() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Skip Next Show")
+            }
+        }
+    }
+}
+```
+
+### Best Practices for Compose
+
+1. **SideEffect for registration** - Use SideEffect for one-time operations like registerAndLoad
+2. **DisposableEffect for cleanup** - Clear cache and unregister on dispose
+3. **State management** - Track ad status with StateFlow/remember
+4. **Lifecycle awareness** - Respect Compose lifecycle
+5. **Loading UI** - Show progress indicator during splash timeout
+6. **Custom splash UI** - Create branded splash screens with progress
+7. **ViewModel integration** - Use ViewModel for complex resume ad management
+8. **Error handling** - Handle ad failures gracefully without blocking UI
+9. **Timeout handling** - Always respect timeout and call nextAction
+10. **Memory management** - Clear resources in DisposableEffect onDispose
