@@ -1,5 +1,5 @@
 ---
-name: admob-integration
+name: adspace-integration
 description: AdSpaceSDK (AdMob Next-Gen wrapper) integration for Android. Covers all ad types (Banner, Native, Interstitial, Rewarded, Rewarded Interstitial, Open App), CMP consent (UMP/GDPR), Firebase Remote Config, resume ads. Both View API (XML/Kotlin) and Jetpack Compose. Min SDK 26, Java 21.
 ---
 

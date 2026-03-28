@@ -44,8 +44,14 @@
     },
     {
       "name": "admob-integration",
-      "description": "AdMob integration patterns for Android with Jetpack Compose. Use when implementing banner ads, interstitial ads, rewarded ads, or native ads in Android applications.",
+      "description": "Legacy alias for AdSpaceSDK integration for Android. Use this if older workflows still refer to admob-integration.",
       "source": "./skills/admob-integration",
+      "category": "development"
+    },
+    {
+      "name": "adspace-integration",
+      "description": "AdSpaceSDK (AdMob Next-Gen wrapper) integration for Android. Covers Banner, Native, Interstitial, Rewarded, Rewarded Interstitial, Open App, CMP consent, Firebase Remote Config, and resume ads.",
+      "source": "./skills/adspace-integration",
       "category": "development"
     }
   ]
