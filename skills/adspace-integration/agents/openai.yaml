@@ -1,0 +1,4 @@
+interface:
+  display_name: "AdSpace Integration"
+  short_description: "Integrate AdSpace SDK in Android apps"
+  default_prompt: "Use $adspace-integration to integrate or fix AdSpaceSDK in this Android app."
