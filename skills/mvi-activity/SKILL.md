@@ -1,44 +1,42 @@
 ---
 name: mvi-activity
-description: MVI (Model-View-Intent) pattern implementation for Android Activities with Jetpack Compose. Use when creating new Activity screens with MVI architecture, implementing screen state management with sealed classes, handling user actions/events, or structuring Compose-based Activities with ViewModel separation.
+description: Lean MVI pattern for Android Activities with Jetpack Compose. Use when creating Compose-first Activity screens with UiState, Action, Event, StateFlow, SharedFlow, and a small ViewModel boundary.
 ---
 
-# MVI Activity Pattern
+# MVI Activity
 
-MVI pattern implementation cho Android Activities sử dụng Jetpack Compose với separation of concerns rõ ràng giữa Activity, Screen, ViewModel và State.
+Pattern tối giản cho Android Activity dùng Compose:
+- `Activity` dựng UI và xử lý `Event`
+- `Screen` chỉ nhận `UiState` + `onAction`
+- `ViewModel` giữ `StateFlow` + `SharedFlow`
+- `Repository` hoặc `UseCase` nằm sau `ViewModel`
 
-## Core Architecture
+## Minimal Structure
 
-### File Structure
-
-```
+```text
 feature/
-├── FeatureActivity.kt      # Entry point, event handling
-├── FeatureScreen.kt        # UI (100% Compose)
-├── FeatureViewModel.kt     # Business logic, state management
-├── FeatureUiState.kt       # Immutable state model
-├── FeatureAction.kt        # User actions (sealed class)
-└── FeatureEvent.kt         # ViewModel -> Activity events
+├── FeatureActivity.kt
+├── FeatureScreen.kt
+├── FeatureViewModel.kt
+├── FeatureUiState.kt
+├── FeatureAction.kt
+└── FeatureEvent.kt
 ```
 
-### Key Principles
+## Rules
 
-1. **Screen không nhận ViewModel** - Screen chỉ nhận `UiState` và `onAction` callback
-2. **Single entry point** - Mọi user action đi qua sealed class Action
-3. **StateFlow cho UI** - `_uiState: MutableStateFlow<UiState>` với `asStateFlow()`
-4. **SharedFlow cho Events** - `_events: MutableSharedFlow<Event>` cho navigation/messages
-5. **Activity xử lý Events** - Navigation, Toast, Activity Result từ Events
+- `Screen` không nhận `ViewModel`
+- Mọi input từ UI đi qua `FeatureAction`
+- UI state là immutable `data class`
+- One-off side effects đi qua `FeatureEvent`
+- `Activity` xử lý navigation, `Toast`, launcher result
+- Ưu tiên `by viewModels()` và `by lazy` nếu thật sự giúp giảm boilerplate
 
-## Activity Template
+## Activity
 
 ```kotlin
 @AndroidEntryPoint
 class FeatureActivity : ComponentActivity() {
-
-    companion object {
-        fun newInstance(context: Context) = Intent(context, FeatureActivity::class.java)
-    }
-
     private val viewModel: FeatureViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,15 +45,13 @@ class FeatureActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 val uiState by viewModel.uiState.collectAsState()
-                
                 FeatureScreen(
                     uiState = uiState,
-                    onAction = { action -> viewModel.handleAction(action) }
+                    onAction = viewModel::handleAction
                 )
             }
         }
 
-        // Collect events cho navigation và side effects
         lifecycleScope.launch {
             viewModel.events.collect { event ->
                 handleEvent(event)
@@ -65,16 +61,14 @@ class FeatureActivity : ComponentActivity() {
 
     private fun handleEvent(event: FeatureEvent) {
         when (event) {
-            is FeatureEvent.Navigation.NavigateBack -> finish()
-            is FeatureEvent.Message -> {
-                Toast.makeText(this, event.message, Toast.LENGTH_SHORT).show()
-            }
+            FeatureEvent.NavigateBack -> finish()
+            is FeatureEvent.ShowMessage -> Toast.makeText(this, event.message, Toast.LENGTH_SHORT).show()
         }
     }
 }
 ```
 
-## Screen Template
+## Screen
 
 ```kotlin
 @Composable
@@ -84,30 +78,21 @@ fun FeatureScreen(
 ) {
     Scaffold(
         topBar = {
-            FeatureTopBar(
-                onBackClick = { onAction(FeatureAction.NavigateBack) }
-            )
+            FeatureTopBar(onBackClick = { onAction(FeatureAction.BackClicked) })
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Content dựa trên state
             when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                uiState.errorMessage != null -> {
-                    ErrorMessage(message = uiState.errorMessage)
-                }
+                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                uiState.errorMessage != null -> ErrorMessage(uiState.errorMessage)
                 else -> {
                     FeatureContent(
                         data = uiState.data,
-                        onItemClick = { id -> 
-                            onAction(FeatureAction.SelectItem(id)) 
-                        }
+                        onItemClick = { id -> onAction(FeatureAction.ItemClicked(id)) }
                     )
                 }
             }
@@ -116,7 +101,7 @@ fun FeatureScreen(
 }
 ```
 
-## ViewModel Template
+## ViewModel
 
 ```kotlin
 @HiltViewModel
@@ -136,103 +121,82 @@ class FeatureViewModel @Inject constructor(
 
     fun handleAction(action: FeatureAction) {
         when (action) {
-            is FeatureAction.NavigateBack -> navigateBack()
-            is FeatureAction.SelectItem -> selectItem(action.id)
+            FeatureAction.BackClicked -> emitBack()
+            is FeatureAction.ItemClicked -> selectItem(action.id)
+            FeatureAction.RetryClicked -> loadData()
         }
     }
 
-    private fun navigateBack() {
+    private fun loadData() {
         viewModelScope.launch {
-            _events.emit(FeatureEvent.Navigation.NavigateBack)
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            runCatching { repository.getItems() }
+                .onSuccess { items ->
+                    _uiState.update { it.copy(data = items, isLoading = false) }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(errorMessage = error.message, isLoading = false) }
+                }
         }
     }
 
     private fun selectItem(id: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val result = repository.getItem(id)
-                _uiState.update { 
-                    it.copy(data = result, isLoading = false) 
-                }
-            } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(errorMessage = e.message, isLoading = false) 
-                }
-            }
+            _events.emit(FeatureEvent.OpenDetail(id))
+        }
+    }
+
+    private fun emitBack() {
+        viewModelScope.launch {
+            _events.emit(FeatureEvent.NavigateBack)
         }
     }
 }
 ```
 
-## State Definition
+## State / Action / Event
 
 ```kotlin
 data class FeatureUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val data: List<Item> = emptyList(),
-    val selectedId: String = "",
-    // Boolean flags cho conditional UI
-    val showDialog: Boolean = false
+    val data: List<Item> = emptyList()
 )
-```
 
-## Action Sealed Class
+sealed interface FeatureAction {
+    data object BackClicked : FeatureAction
+    data object RetryClicked : FeatureAction
+    data class ItemClicked(val id: String) : FeatureAction
+}
 
-```kotlin
-sealed class FeatureAction {
-    data object NavigateBack : FeatureAction()
-    data class SelectItem(val id: String) : FeatureAction()
-    data class UpdateText(val text: String) : FeatureAction()
+sealed interface FeatureEvent {
+    data object NavigateBack : FeatureEvent
+    data class OpenDetail(val id: String) : FeatureEvent
+    data class ShowMessage(val message: String) : FeatureEvent
 }
 ```
 
-## Event Sealed Class
+## Compose + Coroutine Notes
+
+- Dùng `collectAsState()` cho render state
+- Dùng `MutableStateFlow` + `update { copy(...) }` cho atomic update
+- Dùng `MutableSharedFlow` cho navigation, snackbar, toast
+- Nếu cần init object nặng trong `Activity` hoặc `ViewModel`, dùng `by lazy` thay vì custom delegation
+
+## Boundary
 
 ```kotlin
-sealed class FeatureEvent {
-    sealed class Navigation : FeatureEvent() {
-        data object NavigateBack : Navigation()
-        data class NavigateToDetail(val id: String) : Navigation()
-    }
-    data class Message(val message: String) : FeatureEvent()
+interface FeatureRepository {
+    suspend fun getItems(): List<Item>
 }
 ```
 
-## Best Practices
+- `ViewModel` gọi `Repository` hoặc một `UseCase` mỏng
+- Không nhét navigation, Android framework API, hoặc Compose state cục bộ vào repository
 
-### State Updates
+## Avoid
 
-- Luôn dùng `StateFlow.update { it.copy(...) }` cho atomic updates
-- Tránh tạo nhiều state variables riêng lẻ
-- Sử dụng data class để group related state
-
-### Action Handling
-
-- Mỗi action nên có 1 mục đích rõ ràng
-- Không xử lý business logic trong Screen
-- Chuyển đổi action phức tạp trong Activity trước khi gọi ViewModel
-
-### Event vs State
-
-| Event | State |
-|-------|-------|
-| Navigation | Loading indicators |
-| Toast/Snackbar | Data display |
-| Activity Result | Selected items |
-| One-time actions | Toggle states |
-
-### Component Reusability
-
-- Components không nhận ViewModel, chỉ nhận lambda callbacks
-- Tách components thành các file riêng trong package `components/`
-- Luôn viết Preview cho components
-
-## Examples
-
-Xem [references/mvi-examples.md](references/mvi-examples.md) cho các ví dụ thực tế:
-- Activity với ActivityResultLauncher
-- Multiple screens trong 1 Activity
-- Dialog và BottomSheet handling
-- Error handling patterns
+- `Screen` tự gọi repository hoặc giữ business logic
+- Nhiều `LiveData`/state rời rạc cho cùng một screen
+- Dùng `StateFlow` cho one-time event
+- Đưa catalog design patterns tổng quát vào skill này
